@@ -114,7 +114,6 @@ export async function POST(req: Request) {
     success: true, 
     targets: targets.length, 
     sentCount: sendCount,
-    managerSendCount,
     failedUsers
   })
 }

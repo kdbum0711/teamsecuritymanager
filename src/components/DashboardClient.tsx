@@ -16,6 +16,18 @@ export default function DashboardClient({ user }: { user: any }) {
   const [date, setDate] = useState<DateRange | undefined>()
   const [reason, setReason] = useState("")
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+  const [exceptions, setExceptions] = useState<any[]>([])
+  const [selectedExceptionReason, setSelectedExceptionReason] = useState<string>("")
+
+  const fetchExceptions = () => {
+    fetch('/api/exceptions')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.exceptions) {
+          setExceptions(data.exceptions)
+        }
+      })
+  }
 
   useEffect(() => {
     fetch('/api/checks')
@@ -23,6 +35,7 @@ export default function DashboardClient({ user }: { user: any }) {
       .then(data => {
         if (data.status) setStatus(data.status)
       })
+    fetchExceptions()
   }, [])
 
   const handleCheck = async () => {
@@ -84,11 +97,36 @@ export default function DashboardClient({ user }: { user: any }) {
         toast.success(`[${formattedStartDate} ~ ${formattedEndDate}] 부재 등록 완료.`)
         setIsPopoverOpen(false)
         setReason("")
+        fetchExceptions()
       } else {
         toast.error("등록 실패: " + data.error)
       }
     } catch (e) {
       toast.error("오류가 발생했습니다.")
+    }
+  }
+
+  const exceptionRanges = exceptions.map(e => ({
+    from: new Date(e.start_date),
+    to: new Date(e.end_date)
+  }))
+
+  const handleSelectDate = (newDate: DateRange | undefined) => {
+    setDate(newDate)
+    if (newDate?.from && !newDate.to) {
+      const dt = newDate.from.getTime()
+      const found = exceptions.find(e => {
+        const start = new Date(e.start_date).setHours(0,0,0,0)
+        const end = new Date(e.end_date).setHours(23,59,59,999)
+        return dt >= start && dt <= end
+      })
+      if (found) {
+        setSelectedExceptionReason(found.reason)
+      } else {
+        setSelectedExceptionReason("")
+      }
+    } else {
+      setSelectedExceptionReason("")
     }
   }
 
@@ -173,12 +211,19 @@ export default function DashboardClient({ user }: { user: any }) {
               <Calendar
                 mode="range"
                 selected={date}
-                onSelect={setDate}
+                onSelect={handleSelectDate}
+                modifiers={{ booked: exceptionRanges }}
+                modifiersClassNames={{ booked: "bg-yellow-100 text-yellow-800 font-bold underline decoration-yellow-400 decoration-2 underline-offset-4" }}
                 className="bg-transparent"
                 locale={ko}
                 numberOfMonths={1}
               />
             </div>
+            {selectedExceptionReason && (
+              <div className="bg-yellow-50 text-yellow-800 p-3 rounded-xl text-sm font-bold text-center border border-yellow-200 animate-in fade-in zoom-in duration-300">
+                📌 기존 등록 일정: {selectedExceptionReason}
+              </div>
+            )}
             <Input 
               placeholder="사유 (예: 연차, 반차, 출장)" 
               value={reason} 

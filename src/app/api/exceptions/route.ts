@@ -23,3 +23,20 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
+
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const kakaoId = (session.user as any).kakao_id
+  const { data: user } = await supabase.from('users').select('id').eq('kakao_id', kakaoId).single()
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
+
+  const { data: exceptions, error } = await supabase
+    .from('exceptions')
+    .select('*')
+    .eq('user_id', user.id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true, exceptions })
+}

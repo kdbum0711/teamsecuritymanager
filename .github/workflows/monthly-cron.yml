@@ -1,0 +1,14 @@
+name: Monthly Security Report
+on:
+  schedule:
+    # 매월 1일 자정 (UTC 00:00 = KST 09:00)
+    - cron: '0 0 1 * *'
+
+jobs:
+  monthly_report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Monthly Report API
+        run: |
+          curl -X POST https://teamsecuritymanager.vercel.app/api/admin/monthly-report \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

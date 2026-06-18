@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
 import { format } from "date-fns"
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (role !== 'admin' && role !== 'security') return NextResponse.json({ error: "Unauthorized" }, { status: 403 })

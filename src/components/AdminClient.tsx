@@ -59,102 +59,157 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
   const pending = users.filter(u => u.status === 'pending').length
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-4">
+    <div className="w-full max-w-md mx-auto flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 h-full">
+      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm shrink-0">
+        <div className="flex items-center gap-3">
           <Link href="/">
-            <Button variant="ghost" size="icon" className="rounded-full">
+            <Button variant="ghost" size="icon" className="rounded-full w-9 h-9 bg-gray-50 hover:bg-gray-100">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">팀 보안점검 현황</h1>
-          
-          <Popover>
-            <PopoverTrigger className="ml-4 flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl text-gray-700 font-semibold hover:bg-gray-100 transition-colors focus:outline-none cursor-pointer">
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-              {format(selectedDate, "yyyy년 MM월 dd일")}
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 rounded-2xl border-0 shadow-2xl" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(day) => day && setSelectedDate(day)}
-                locale={ko}
-                className="bg-white rounded-2xl"
-              />
-            </PopoverContent>
-          </Popover>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">팀 현황 <span className="text-blue-500 ml-1 text-sm">({format(selectedDate, "M/d")})</span></h1>
         </div>
-        <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${currentUser.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-          {currentUser.role === 'admin' ? '👑 최고 관리자' : '👀 보안 담당자'}
-        </span>
+        <div className="flex items-center gap-2">
+          {currentUser.role === 'admin' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full bg-white border-gray-200 text-gray-700 shadow-sm font-bold text-xs px-3 py-1.5 hover:bg-gray-50 h-9"
+                onClick={async () => {
+                  const loadingId = toast.loading("결산 리포트 집계 및 발송 중...");
+                  try {
+                    const res = await fetch('/api/admin/monthly-report', { method: 'POST' });
+                    const data = await res.json();
+                    toast.dismiss(loadingId);
+                    if (data.success) {
+                      toast.success(`전월 결산이 ${data.sentTo}명의 관리자에게 발송되었습니다!`);
+                    } else {
+                      toast.error("발송 실패: " + data.error);
+                    }
+                  } catch (e) {
+                    toast.dismiss(loadingId);
+                    toast.error("발송 중 오류가 발생했습니다.");
+                  }
+                }}
+              >
+                📊 전월 결산
+              </Button>
+              <Popover>
+              <PopoverTrigger className="flex items-center justify-center bg-gray-900 text-white w-9 h-9 rounded-full shadow-sm hover:bg-gray-800 transition-colors cursor-pointer">
+                ⏰
+              </PopoverTrigger>
+              <PopoverContent className="w-[calc(100vw-2rem)] max-w-sm p-5 rounded-2xl mx-4" align="end">
+                <h3 className="font-bold mb-2 text-gray-800">알림 발송 시간 (KST)</h3>
+                <p className="text-xs text-gray-500 mb-4 leading-relaxed">설정하신 시간에 정확히 1번 카카오톡 알림을 발송합니다.</p>
+                <div className="flex gap-2">
+                  <input type="time" id="alarmTime" className="border border-gray-200 bg-gray-50 rounded-xl p-2.5 w-full text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-yellow-400" defaultValue="17:00" />
+                </div>
+                <Button 
+                  className="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-xl h-10"
+                  onClick={async () => {
+                    const time = (document.getElementById('alarmTime') as HTMLInputElement).value;
+                    const loadingId = toast.loading("적용 중...");
+                    try {
+                      const res = await fetch('/api/admin/cron', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ time })
+                      });
+                      const data = await res.json();
+                      toast.dismiss(loadingId);
+                      if (data.success) {
+                        toast.success(`알림 시간이 ${time}으로 변경되었습니다!`);
+                      } else {
+                        toast.error("변경 실패: " + data.error);
+                      }
+                    } catch (e) {
+                      toast.dismiss(loadingId);
+                      toast.error("오류가 발생했습니다.");
+                    }
+                  }}
+                >
+                  저장하기
+                </Button>
+              </PopoverContent>
+            </Popover>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="border-0 shadow-md bg-white overflow-hidden">
-          <CardContent className="p-6 text-center border-b-4 border-green-500">
-            <p className="text-sm font-bold text-gray-500 mb-1">점검 완료</p>
-            <p className="text-4xl font-extrabold text-green-500">{completed}</p>
+      <div className="flex flex-col gap-4">
+        <Card className="border-0 shadow-lg rounded-3xl bg-white overflow-hidden">
+          <CardContent className="p-4 flex justify-center">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(day) => day && setSelectedDate(day)}
+              locale={ko}
+              className="bg-white scale-90 sm:scale-100 origin-top"
+            />
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-md bg-white overflow-hidden">
-          <CardContent className="p-6 text-center border-b-4 border-red-500">
-            <p className="text-sm font-bold text-gray-500 mb-1">미점검</p>
-            <p className="text-4xl font-extrabold text-red-500">{pending}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-md bg-white overflow-hidden">
-          <CardContent className="p-6 text-center border-b-4 border-gray-400">
-            <p className="text-sm font-bold text-gray-500 mb-1">부재 / 예외</p>
-            <p className="text-4xl font-extrabold text-gray-700">{exceptions}</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="p-4 font-bold text-gray-600">이름</th>
-                <th className="p-4 font-bold text-gray-600">오늘 상태</th>
-                <th className="p-4 font-bold text-gray-600">특이사항 (사유)</th>
-                <th className="p-4 font-bold text-gray-600">시스템 권한</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(u => (
-                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="p-4 font-bold text-gray-800">{u.name}</td>
-                  <td className="p-4">
-                    {u.status === 'completed' && <span className="text-green-700 bg-green-100 border border-green-200 px-3 py-1 rounded-full text-xs font-bold">완료됨</span>}
-                    {u.status === 'pending' && <span className="text-red-700 bg-red-100 border border-red-200 px-3 py-1 rounded-full text-xs font-bold">미점검</span>}
-                    {u.status === 'exception' && <span className="text-gray-700 bg-gray-200 border border-gray-300 px-3 py-1 rounded-full text-xs font-bold">예외/부재</span>}
-                  </td>
-                  <td className="p-4 text-sm font-medium text-gray-500">{u.reason || '-'}</td>
-                  <td className="p-4">
-                    {currentUser.role === 'admin' ? (
-                      <select 
-                        value={u.role} 
-                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                        className="bg-white border border-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-yellow-400 font-semibold text-gray-700"
-                      >
-                        <option value="user">팀원 (User)</option>
-                        <option value="security">보안 담당자 (Security)</option>
-                        <option value="admin">최고 관리자 (Admin)</option>
-                      </select>
-                    ) : (
-                      <span className="text-sm font-semibold text-gray-600">
-                        {u.role === 'admin' ? '최고 관리자' : u.role === 'security' ? '보안 담당자' : '팀원'}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="border-0 shadow-sm bg-green-50 rounded-2xl">
+            <CardContent className="p-3 text-center flex flex-col items-center justify-center">
+              <p className="text-[11px] font-bold text-green-600 mb-0.5">점검 완료</p>
+              <p className="text-2xl font-extrabold text-green-700">{completed}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm bg-red-50 rounded-2xl">
+            <CardContent className="p-3 text-center flex flex-col items-center justify-center">
+              <p className="text-[11px] font-bold text-red-600 mb-0.5">미점검</p>
+              <p className="text-2xl font-extrabold text-red-700">{pending}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm bg-gray-100 rounded-2xl">
+            <CardContent className="p-3 text-center flex flex-col items-center justify-center">
+              <p className="text-[11px] font-bold text-gray-500 mb-0.5">부재/예외</p>
+              <p className="text-2xl font-extrabold text-gray-700">{exceptions}</p>
+            </CardContent>
+          </Card>
         </div>
-      </Card>
+
+        <div className="flex flex-col gap-3 mt-2">
+          {users.map(u => (
+            <Card key={u.id} className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="p-4 flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 text-lg">{u.name}</span>
+                    {u.status === 'completed' && <span className="text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded text-[10px] font-bold">완료</span>}
+                    {u.status === 'pending' && <span className="text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold">미점검</span>}
+                    {u.status === 'exception' && <span className="text-gray-700 bg-gray-200 border border-gray-300 px-2 py-0.5 rounded text-[10px] font-bold">예외</span>}
+                  </div>
+                  
+                  {currentUser.role === 'admin' ? (
+                    <select 
+                      value={u.role} 
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className="bg-gray-50 border border-gray-200 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-yellow-400 font-semibold text-gray-700"
+                    >
+                      <option value="user">팀원</option>
+                      <option value="security">담당자</option>
+                      <option value="admin">관리자</option>
+                    </select>
+                  ) : (
+                    <span className="text-xs font-semibold text-gray-500 bg-gray-50 px-2 py-1.5 rounded-lg">
+                      {u.role === 'admin' ? '관리자' : u.role === 'security' ? '담당자' : '팀원'}
+                    </span>
+                  )}
+                </div>
+                {u.reason && (
+                  <div className="text-xs font-medium text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                    💡 사유: {u.reason}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

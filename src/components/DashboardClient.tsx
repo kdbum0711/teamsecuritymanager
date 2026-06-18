@@ -17,7 +17,7 @@ export default function DashboardClient({ user }: { user: any }) {
   const [reason, setReason] = useState("")
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const [exceptions, setExceptions] = useState<any[]>([])
-  const [selectedExceptionReason, setSelectedExceptionReason] = useState<string>("")
+  const [selectedException, setSelectedException] = useState<any>(null)
 
   const fetchExceptions = () => {
     fetch('/api/exceptions')
@@ -106,9 +106,15 @@ export default function DashboardClient({ user }: { user: any }) {
     }
   }
 
+  const parseLocalDate = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
   const exceptionRanges = exceptions.map(e => ({
-    from: new Date(e.start_date),
-    to: new Date(e.end_date)
+    from: parseLocalDate(e.start_date),
+    to: parseLocalDate(e.end_date)
   }))
 
   const handleSelectDate = (newDate: DateRange | undefined) => {
@@ -116,17 +122,35 @@ export default function DashboardClient({ user }: { user: any }) {
     if (newDate?.from && !newDate.to) {
       const dt = newDate.from.getTime()
       const found = exceptions.find(e => {
-        const start = new Date(e.start_date).setHours(0,0,0,0)
-        const end = new Date(e.end_date).setHours(23,59,59,999)
+        const start = parseLocalDate(e.start_date).getTime()
+        const end = parseLocalDate(e.end_date).getTime()
         return dt >= start && dt <= end
       })
       if (found) {
-        setSelectedExceptionReason(found.reason)
+        setSelectedException(found)
       } else {
-        setSelectedExceptionReason("")
+        setSelectedException(null)
       }
     } else {
-      setSelectedExceptionReason("")
+      setSelectedException(null)
+    }
+  }
+
+  const handleDeleteException = async (id: string) => {
+    if (!confirm("이 일정을 삭제하시겠습니까?")) return;
+    try {
+      const res = await fetch(`/api/exceptions?id=${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        toast.success("부재 일정이 삭제되었습니다.")
+        setSelectedException(null)
+        setDate(undefined)
+        fetchExceptions()
+      } else {
+        toast.error("삭제 실패: " + data.error)
+      }
+    } catch (e) {
+      toast.error("오류가 발생했습니다.")
     }
   }
 
@@ -219,9 +243,17 @@ export default function DashboardClient({ user }: { user: any }) {
                 numberOfMonths={1}
               />
             </div>
-            {selectedExceptionReason && (
-              <div className="bg-yellow-50 text-yellow-800 p-3 rounded-xl text-sm font-bold text-center border border-yellow-200 animate-in fade-in zoom-in duration-300">
-                📌 기존 등록 일정: {selectedExceptionReason}
+            {selectedException && (
+              <div className="bg-yellow-50 text-yellow-800 p-3 rounded-xl text-sm font-bold border border-yellow-200 animate-in fade-in zoom-in duration-300 flex justify-between items-center">
+                <span>📌 {selectedException.reason}</span>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => handleDeleteException(selectedException.id)}
+                  className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg text-xs"
+                >
+                  삭제
+                </Button>
               </div>
             )}
             <Input 

@@ -43,11 +43,62 @@ export async function POST(req: Request) {
   // 6. 미점검 대상자 선별
   const targets = users.filter(u => !checkedUserIds.has(u.id) && !exceptionUserIds.has(u.id))
   
-  if (targets.length === 0) {
-    return NextResponse.json({ success: true, message: "All users have checked or are on exception." })
+  // 7. 관리자/담당자에게 일일 현황 리포트 발송
+  const managers = users.filter(u => u.role === 'admin' || u.role === 'security')
+  const reportText = targets.length > 0 
+    ? `[일일 보안점검 현황]\n오늘(${format(today, "MM/dd")}) 미점검자는 총 ${targets.length}명입니다.\n\n미점검자 명단:\n${targets.map(t => `- ${t.name}`).join('\n')}`
+    : `[일일 보안점검 완료]\n오늘(${format(today, "MM/dd")}) 모든 인원이 보안점검을 완료했습니다! 🎉`
+
+  let managerSendCount = 0
+  for (const manager of managers) {
+    if (!manager.kakao_refresh_token) continue
+    try {
+      const tokenRes = await fetch("https://kauth.kakao.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: process.env.KAKAO_CLIENT_ID || "",
+          client_secret: process.env.KAKAO_CLIENT_SECRET || "",
+          refresh_token: manager.kakao_refresh_token
+        })
+      })
+
+      if (!tokenRes.ok) continue
+      const tokenData = await tokenRes.json()
+      const accessToken = tokenData.access_token
+
+      if (tokenData.refresh_token) {
+        await supabase.from('users').update({ kakao_refresh_token: tokenData.refresh_token }).eq('id', manager.id)
+      }
+
+      const sendRes = await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          template_object: JSON.stringify({
+            object_type: "text",
+            text: reportText,
+            link: {
+              web_url: process.env.NEXTAUTH_URL || "http://localhost:3000",
+              mobile_web_url: process.env.NEXTAUTH_URL || "http://localhost:3000"
+            },
+            button_title: "대시보드 바로가기"
+          })
+        })
+      })
+      if (sendRes.ok) managerSendCount++
+    } catch (err) {}
   }
 
-  // 7. 대상자들에게 카카오 알림톡(나에게 보내기) 전송
+  if (targets.length === 0) {
+    return NextResponse.json({ success: true, message: "All users checked.", managerSendCount })
+  }
+
+  // 8. 대상자들에게 카카오 알림톡(나에게 보내기) 전송
   let sendCount = 0
   const failedUsers = []
 
@@ -58,7 +109,6 @@ export async function POST(req: Request) {
     }
 
     try {
-      // 7.1 카카오 액세스 토큰 갱신
       const tokenRes = await fetch("https://kauth.kakao.com/oauth/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -78,12 +128,10 @@ export async function POST(req: Request) {
       const tokenData = await tokenRes.json()
       const accessToken = tokenData.access_token
 
-      // 7.2 리프레시 토큰이 갱신되었다면 DB 업데이트 (카카오 정책에 따라 갱신될 수 있음)
       if (tokenData.refresh_token) {
         await supabase.from('users').update({ kakao_refresh_token: tokenData.refresh_token }).eq('id', user.id)
       }
 
-      // 7.3 나에게 보내기 발송 (팀원 각자의 카카오톡 "나와의 채팅" 방으로 전송됨)
       const sendRes = await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
         method: "POST",
         headers: {
@@ -117,6 +165,7 @@ export async function POST(req: Request) {
     success: true, 
     targets: targets.length, 
     sentCount: sendCount,
+    managerSendCount,
     failedUsers
   })
 }

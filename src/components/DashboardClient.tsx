@@ -119,12 +119,13 @@ export default function DashboardClient({ user }: { user: any }) {
 
   const handleSelectDate = (newDate: DateRange | undefined) => {
     setDate(newDate)
-    if (newDate?.from && !newDate.to) {
+    if (newDate?.from) {
       const dt = newDate.from.getTime()
       const found = exceptions.find(e => {
         const start = parseLocalDate(e.start_date).getTime()
-        const end = parseLocalDate(e.end_date).getTime()
-        return dt >= start && dt <= end
+        const end = parseLocalDate(e.end_date)
+        end.setHours(23, 59, 59, 999)
+        return dt >= start && dt <= end.getTime()
       })
       if (found) {
         setSelectedException(found)

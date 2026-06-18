@@ -46,7 +46,7 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
     const data = await res.json()
     if (data.success) {
       toast.success("권한이 변경되었습니다.")
-      fetchData()
+      fetchData(selectedDate)
     } else {
       toast.error(data.error)
     }

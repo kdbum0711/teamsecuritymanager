@@ -6,8 +6,7 @@ import { format } from "date-fns"
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (role !== 'admin' && role !== 'security') return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
   const dateParam = searchParams.get('date')

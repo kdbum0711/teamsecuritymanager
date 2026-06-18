@@ -165,11 +165,9 @@ export default function DashboardClient({ user }: { user: any }) {
           <p className="text-gray-500 text-sm mt-1">오늘 하루도 고생 많으셨습니다.</p>
         </div>
         <div className="flex gap-2">
-          {(user.role === 'admin' || user.role === 'security') && (
-            <Button variant="secondary" size="sm" onClick={() => window.location.href = '/admin'} className="rounded-full font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 shadow-sm border border-blue-200">
-              대시보드
-            </Button>
-          )}
+          <Button variant="secondary" size="sm" onClick={() => window.location.href = '/admin'} className="rounded-full font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 shadow-sm border border-blue-200">
+            {user.role === 'admin' ? '관리자 대시보드' : '전체 현황 보기'}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: '/login' })} className="rounded-full font-semibold">
             로그아웃
           </Button>

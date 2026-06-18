@@ -43,6 +43,25 @@ export default function DashboardClient({ user }: { user: any }) {
     }
   }
 
+  const handleCancelCheck = async () => {
+    if (!confirm("점검 완료를 취소하시겠습니까?")) return;
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/checks', { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        setStatus('pending')
+        toast.info("점검 완료가 취소되었습니다.")
+      } else {
+        toast.error("취소에 실패했습니다: " + data.error)
+        setStatus('completed')
+      }
+    } catch (e) {
+      toast.error("오류가 발생했습니다.")
+      setStatus('completed')
+    }
+  }
+
   const handleException = async () => {
     if (!date?.from) return toast.warning("날짜를 선택해주세요.")
     if (!reason.trim()) return toast.warning("사유를 입력해주세요.")
@@ -108,7 +127,7 @@ export default function DashboardClient({ user }: { user: any }) {
                   ? 'bg-gradient-to-br from-green-400 to-green-600 border-green-200 text-white shadow-green-300 hover:scale-[1.02]' 
                   : 'bg-white border-gray-50 text-gray-700 hover:border-yellow-300 hover:shadow-yellow-200/60 hover:scale-[1.03] active:scale-95'
               }`}
-              onClick={status === 'completed' ? undefined : handleCheck}
+              onClick={status === 'completed' ? handleCancelCheck : handleCheck}
             >
               {status === 'completed' ? (
                 <>
@@ -116,6 +135,7 @@ export default function DashboardClient({ user }: { user: any }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                   </svg>
                   <span className="text-2xl font-extrabold tracking-wide drop-shadow-sm">점검 완료!</span>
+                  <span className="text-sm font-medium mt-2 text-green-100 opacity-80 group-hover:opacity-100 transition-opacity">클릭하여 취소하기</span>
                 </>
               ) : (
                 <>

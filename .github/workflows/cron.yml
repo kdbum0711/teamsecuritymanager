@@ -1,0 +1,11 @@
+name: Daily Security Check Reminder
+on:
+  schedule:
+    - cron: '0 8 * * *' # UTC 08:00 = KST 17:00
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Reminder API
+        run: curl -X POST https://teamsecuritymanager.vercel.app/api/cron/remind

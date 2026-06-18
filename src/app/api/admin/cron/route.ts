@@ -57,3 +57,39 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ success: true, cron: cronExpr })
 }
+
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  if ((session?.user as any)?.role !== 'admin') return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+
+  const owner = process.env.GITHUB_OWNER
+  const repo = process.env.GITHUB_REPO
+  const token = process.env.GITHUB_TOKEN
+  const path = '.github/workflows/cron.yml'
+
+  if (!owner || !repo || !token) return NextResponse.json({ time: "17:00" })
+
+  try {
+    const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store'
+    })
+    
+    if (!getRes.ok) return NextResponse.json({ time: "17:00" })
+    const fileData = await getRes.json()
+    const contentStr = Buffer.from(fileData.content, 'base64').toString('utf8')
+    
+    // Match cron: 'min hour * * *'
+    const match = contentStr.match(/cron:\s*'(\d+)\s+(\d+)\s+\*\s+\*\s+\*'/)
+    if (match) {
+      const minStr = match[1].padStart(2, '0')
+      let hour = parseInt(match[2]) + 9 // UTC to KST
+      if (hour >= 24) hour -= 24
+      const hourStr = hour.toString().padStart(2, '0')
+      return NextResponse.json({ time: `${hourStr}:${minStr}` })
+    }
+  } catch (e) {
+    console.error(e)
+  }
+  return NextResponse.json({ time: "17:00" })
+}

@@ -13,6 +13,7 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [alarmTime, setAlarmTime] = useState("17:00")
 
   const fetchData = async (date: Date) => {
     setLoading(true)
@@ -35,6 +36,16 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
   useEffect(() => {
     fetchData(selectedDate)
   }, [selectedDate])
+
+  useEffect(() => {
+    if (currentUser.role === 'admin') {
+      fetch('/api/admin/cron')
+        .then(res => res.json())
+        .then(data => {
+          if (data.time) setAlarmTime(data.time)
+        })
+    }
+  }, [currentUser.role])
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (currentUser.role !== 'admin') return toast.error("권한이 없습니다.")
@@ -103,18 +114,23 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
                 <h3 className="font-bold mb-2 text-gray-800">알림 발송 시간 (KST)</h3>
                 <p className="text-xs text-gray-500 mb-4 leading-relaxed">설정하신 시간에 정확히 1번 카카오톡 알림을 발송합니다.</p>
                 <div className="flex gap-2">
-                  <input type="time" id="alarmTime" className="border border-gray-200 bg-gray-50 rounded-xl p-2.5 w-full text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-yellow-400" defaultValue="17:00" />
+                  <input 
+                    type="time" 
+                    id="alarmTime" 
+                    className="border border-gray-200 bg-gray-50 rounded-xl p-2.5 w-full text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-yellow-400" 
+                    value={alarmTime}
+                    onChange={(e) => setAlarmTime(e.target.value)}
+                  />
                 </div>
                 <Button 
                   className="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-xl h-10"
                   onClick={async () => {
-                    const time = (document.getElementById('alarmTime') as HTMLInputElement).value;
                     const loadingId = toast.loading("적용 중...");
                     try {
                       const res = await fetch('/api/admin/cron', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ time })
+                        body: JSON.stringify({ time: alarmTime })
                       });
                       const data = await res.json();
                       toast.dismiss(loadingId);

@@ -1,0 +1,11 @@
+name: Manager Daily Report
+on:
+  schedule:
+    - cron: '0 9 * * *'
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Manager Report API
+        run: curl -X POST https://teamsecuritymanager.vercel.app/api/cron/manager-report -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

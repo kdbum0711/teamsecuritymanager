@@ -13,7 +13,8 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [alarmTime, setAlarmTime] = useState("17:00")
+  const [remindTime, setRemindTime] = useState("17:00")
+  const [managerTime, setManagerTime] = useState("18:00")
 
   const fetchData = async (date: Date) => {
     setLoading(true)
@@ -39,10 +40,15 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
 
   useEffect(() => {
     if (currentUser.role === 'admin') {
-      fetch('/api/admin/cron')
+      fetch('/api/admin/cron?type=remind')
         .then(res => res.json())
         .then(data => {
-          if (data.time) setAlarmTime(data.time)
+          if (data.time) setRemindTime(data.time)
+        })
+      fetch('/api/admin/cron?type=manager')
+        .then(res => res.json())
+        .then(data => {
+          if (data.time) setManagerTime(data.time)
         })
     }
   }, [currentUser.role])
@@ -111,42 +117,85 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
                 ⏰
               </PopoverTrigger>
               <PopoverContent className="w-[calc(100vw-2rem)] max-w-sm p-5 rounded-2xl mx-4" align="end">
-                <h3 className="font-bold mb-2 text-gray-800">알림 발송 시간 (KST)</h3>
-                <p className="text-xs text-gray-500 mb-4 leading-relaxed">설정하신 시간에 정확히 1번 카카오톡 알림을 발송합니다.</p>
-                <div className="flex gap-2">
-                  <input 
-                    type="time" 
-                    id="alarmTime" 
-                    className="border border-gray-200 bg-gray-50 rounded-xl p-2.5 w-full text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-yellow-400" 
-                    value={alarmTime}
-                    onChange={(e) => setAlarmTime(e.target.value)}
-                  />
+                <h3 className="font-bold mb-4 text-gray-800">알림 발송 시간 설정 (KST)</h3>
+                
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-gray-600 mb-2 flex justify-between items-center">
+                    팀원 미점검 재촉 알람
+                  </p>
+                  <div className="flex gap-2">
+                    <input 
+                      type="time" 
+                      className="border border-gray-200 bg-gray-50 rounded-xl p-2 w-full text-center font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400" 
+                      value={remindTime}
+                      onChange={(e) => setRemindTime(e.target.value)}
+                    />
+                    <Button 
+                      className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-xl"
+                      onClick={async () => {
+                        const loadingId = toast.loading("적용 중...");
+                        try {
+                          const res = await fetch('/api/admin/cron', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ time: remindTime, type: 'remind' })
+                          });
+                          const data = await res.json();
+                          toast.dismiss(loadingId);
+                          if (data.success) {
+                            toast.success(`재촉 알림이 ${remindTime}으로 변경되었습니다!`);
+                          } else {
+                            toast.error("변경 실패: " + data.error);
+                          }
+                        } catch (e) {
+                          toast.dismiss(loadingId);
+                          toast.error("오류가 발생했습니다.");
+                        }
+                      }}
+                    >
+                      저장
+                    </Button>
+                  </div>
                 </div>
-                <Button 
-                  className="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-xl h-10"
-                  onClick={async () => {
-                    const loadingId = toast.loading("적용 중...");
-                    try {
-                      const res = await fetch('/api/admin/cron', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ time: alarmTime })
-                      });
-                      const data = await res.json();
-                      toast.dismiss(loadingId);
-                      if (data.success) {
-                        toast.success(`알림 시간이 ${time}으로 변경되었습니다!`);
-                      } else {
-                        toast.error("변경 실패: " + data.error);
-                      }
-                    } catch (e) {
-                      toast.dismiss(loadingId);
-                      toast.error("오류가 발생했습니다.");
-                    }
-                  }}
-                >
-                  저장하기
-                </Button>
+
+                <div className="mb-2">
+                  <p className="text-xs font-bold text-gray-600 mb-2 flex justify-between items-center">
+                    담당자 일일 현황 리포트
+                  </p>
+                  <div className="flex gap-2">
+                    <input 
+                      type="time" 
+                      className="border border-gray-200 bg-gray-50 rounded-xl p-2 w-full text-center font-bold focus:outline-none focus:ring-2 focus:ring-blue-400" 
+                      value={managerTime}
+                      onChange={(e) => setManagerTime(e.target.value)}
+                    />
+                    <Button 
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl"
+                      onClick={async () => {
+                        const loadingId = toast.loading("적용 중...");
+                        try {
+                          const res = await fetch('/api/admin/cron', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ time: managerTime, type: 'manager' })
+                          });
+                          const data = await res.json();
+                          toast.dismiss(loadingId);
+                          if (data.success) {
+                            toast.success(`리포트 발송이 ${managerTime}으로 변경되었습니다!`);
+                          } else {
+                            toast.error("변경 실패: " + data.error);
+                          }
+                        } catch (e) {
+                          toast.dismiss(loadingId);
+                          toast.error("오류가 발생했습니다.");
+                        }
+                      }}
+                    >
+                      저장
+                    </Button>
+                  </div>
+                </div>
               </PopoverContent>
             </Popover>
             </>

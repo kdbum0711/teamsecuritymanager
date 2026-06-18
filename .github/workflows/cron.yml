@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call Reminder API
-        run: curl -X POST https://teamsecuritymanager.vercel.app/api/cron/remind
+        run: curl -X POST https://teamsecuritymanager.vercel.app/api/cron/remind -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

@@ -7,11 +7,18 @@ export const authOptions: NextAuthOptions = {
     KakaoProvider({
       clientId: process.env.KAKAO_CLIENT_ID!,
       clientSecret: process.env.KAKAO_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: "profile_nickname talk_message",
+        },
+      },
     }),
   ],
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'kakao') {
+        const { data: existingUser } = await supabase.from('users').select('role').eq('kakao_id', account.providerAccountId).single()
+        
         const { error } = await supabase
           .from('users')
           .upsert(
@@ -19,7 +26,7 @@ export const authOptions: NextAuthOptions = {
               kakao_id: account.providerAccountId,
               name: user.name,
               kakao_refresh_token: account.refresh_token,
-              role: 'user',
+              role: existingUser ? existingUser.role : 'user',
               is_active: true
             },
             { onConflict: 'kakao_id' }

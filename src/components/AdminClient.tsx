@@ -113,6 +113,43 @@ export default function AdminClient({ currentUser }: { currentUser: any }) {
                 📊 전월 결산
               </Button>
               <Popover>
+                <PopoverTrigger className="flex items-center justify-center bg-gray-900 text-white w-9 h-9 rounded-full shadow-sm hover:bg-gray-800 transition-colors cursor-pointer">
+                  📅
+                </PopoverTrigger>
+                <PopoverContent className="w-[calc(100vw-2rem)] max-w-sm p-5 rounded-2xl mx-4" align="end">
+                  <h3 className="font-bold mb-2 text-gray-800">구글 캘린더 동기화</h3>
+                  <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                    Vercel 환경변수에 <code>GOOGLE_CALENDAR_ID</code>와 <code>GOOGLE_CALENDAR_API_KEY</code>(또는 <code>GOOGLE_SERVICE_ACCOUNT_JSON</code>)를 설정해야 합니다. (매일 자정 자동 동기화 됨)
+                  </p>
+                  <Button 
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl h-10"
+                    onClick={async () => {
+                      const loadingId = toast.loading("동기화 중...");
+                      try {
+                        const res = await fetch('/api/cron/sync-calendar', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await res.json();
+                        toast.dismiss(loadingId);
+                        if (data.success) {
+                          toast.success(`동기화 완료! (${data.synced}건 추가됨)`);
+                          fetchData(selectedDate);
+                        } else {
+                          toast.error("동기화 실패: " + data.error);
+                        }
+                      } catch (e) {
+                        toast.dismiss(loadingId);
+                        toast.error("오류가 발생했습니다.");
+                      }
+                    }}
+                  >
+                    지금 바로 동기화하기
+                  </Button>
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
               <PopoverTrigger className="flex items-center justify-center bg-gray-900 text-white w-9 h-9 rounded-full shadow-sm hover:bg-gray-800 transition-colors cursor-pointer">
                 ⏰
               </PopoverTrigger>

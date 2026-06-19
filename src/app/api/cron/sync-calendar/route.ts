@@ -63,14 +63,22 @@ export async function POST(req: Request) {
 
     let syncedCount = 0
 
-    // 5. 이벤트 파싱 및 예외 일정 등록
+    // 5. 부재 일정 키워드 정의
+    const absenceKeywords = ['연차', '반차', '휴가', '출장', '교육', '예비군', '공가', '병가', '휴무', '오프', '외근']
+
+    // 6. 이벤트 파싱 및 예외 일정 등록
     for (const event of events) {
       const summary = event.summary || ""
-      if (!summary) continue
+      const description = event.description || ""
+      const fullText = `${summary} ${description}`
 
-      // 제목이나 내용에서 유저 이름 찾기
-      const matchedUser = users.find(u => summary.includes(u.name))
-      if (!matchedUser) continue
+      // 텍스트에 부재 키워드가 하나라도 포함되어 있는지 확인 (일반 회의 등 제외)
+      const hasKeyword = absenceKeywords.some(kw => fullText.includes(kw))
+      if (!hasKeyword) continue
+
+      // 제목이나 내용에서 유저 이름 찾기 (여러 명일 수 있음)
+      const matchedUsers = users.filter(u => fullText.includes(u.name))
+      if (matchedUsers.length === 0) continue
 
       // 시작/종료 날짜 추출 (종일 일정은 date, 시간 일정은 dateTime)
       let startDateStr = event.start?.date || event.start?.dateTime
@@ -91,23 +99,25 @@ export async function POST(req: Request) {
       const startFmt = format(startKst, "yyyy-MM-dd")
       const endFmt = format(endKst, "yyyy-MM-dd")
 
-      // 중복 확인
-      const { data: existing } = await supabase
-        .from('exceptions')
-        .select('id')
-        .eq('user_id', matchedUser.id)
-        .eq('start_date', startFmt)
-        .eq('end_date', endFmt)
-        .single()
+      for (const matchedUser of matchedUsers) {
+        // 중복 확인
+        const { data: existing } = await supabase
+          .from('exceptions')
+          .select('id')
+          .eq('user_id', matchedUser.id)
+          .eq('start_date', startFmt)
+          .eq('end_date', endFmt)
+          .single()
 
-      if (!existing) {
-        await supabase.from('exceptions').insert({
-          user_id: matchedUser.id,
-          start_date: startFmt,
-          end_date: endFmt,
-          reason: `[자동연동] ${summary}`
-        })
-        syncedCount++
+        if (!existing) {
+          await supabase.from('exceptions').insert({
+            user_id: matchedUser.id,
+            start_date: startFmt,
+            end_date: endFmt,
+            reason: `[캘린더연동] ${summary}`
+          })
+          syncedCount++
+        }
       }
     }
 

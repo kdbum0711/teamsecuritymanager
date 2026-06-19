@@ -63,8 +63,8 @@ export async function POST(req: Request) {
 
     let syncedCount = 0
 
-    // 5. 부재 일정 키워드 정의
-    const absenceKeywords = ['연차', '반차', '휴가', '출장', '교육', '예비군', '공가', '병가', '휴무', '오프', '외근']
+    // 5. 부재 일정 키워드 정의 ('반차'는 보안점검 대상이므로 부재 예외에서 제외)
+    const absenceKeywords = ['연차', '휴가', '출장', '교육', '예비군', '공가', '병가', '휴무', '오프', '외근']
 
     // 6. 이벤트 파싱 및 예외 일정 등록
     for (const event of events) {

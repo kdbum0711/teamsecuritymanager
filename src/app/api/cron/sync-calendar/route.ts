@@ -66,6 +66,16 @@ export async function POST(req: Request) {
     // 5. 부재 일정 키워드 정의 ('반차'는 보안점검 대상이므로 부재 예외에서 제외)
     const absenceKeywords = ['연차', '휴가', '출장', '교육', '예비군', '공가', '병가', '휴무', '오프', '외근']
 
+    // 이름에서 성을 제외한 '이름(Given Name)'만 추출하는 함수
+    const getGivenName = (fullName: string) => {
+      if (!fullName || fullName.length <= 2) return fullName; // 외자 이름 등은 그대로 사용
+      const doubleSurnames = ["남궁", "황보", "제갈", "사공", "선우", "서문", "독고", "동방"];
+      for (const ds of doubleSurnames) {
+        if (fullName.startsWith(ds)) return fullName.substring(2);
+      }
+      return fullName.substring(1);
+    }
+
     // 6. 이벤트 파싱 및 예외 일정 등록
     for (const event of events) {
       const summary = event.summary || ""
@@ -76,8 +86,13 @@ export async function POST(req: Request) {
       const hasKeyword = absenceKeywords.some(kw => fullText.includes(kw))
       if (!hasKeyword) continue
 
-      // 제목이나 내용에서 유저 이름 찾기 (여러 명일 수 있음)
-      const matchedUsers = users.filter(u => fullText.includes(u.name))
+      // 제목이나 내용에서 유저 이름(풀네임 또는 이름만) 찾기 (여러 명일 수 있음)
+      const matchedUsers = users.filter(u => {
+        const givenName = getGivenName(u.name);
+        // 풀네임 포함되거나, 이름(Given Name)만 포함되어도 매칭
+        return fullText.includes(u.name) || (givenName && fullText.includes(givenName));
+      });
+
       if (matchedUsers.length === 0) continue
 
       // 시작/종료 날짜 추출 (종일 일정은 date, 시간 일정은 dateTime)

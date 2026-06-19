@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { isWeekend, format } from "date-fns"
+import { toZonedTime } from "date-fns-tz"
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get('authorization')
@@ -8,7 +9,7 @@ export async function POST(req: Request) {
     // return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
 
-  const today = new Date()
+  const today = toZonedTime(new Date(), 'Asia/Seoul')
   if (isWeekend(today)) {
     return NextResponse.json({ success: true, message: "Weekend skipped" })
   }

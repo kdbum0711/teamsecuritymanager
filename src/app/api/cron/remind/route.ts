@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { isWeekend, format } from "date-fns"
+import { toZonedTime } from "date-fns-tz"
 
 export async function POST(req: Request) {
   // 1. 보안을 위해 API 키 확인
@@ -10,8 +11,8 @@ export async function POST(req: Request) {
     // return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
 
-  // 2. 주말 체크
-  const today = new Date()
+  // 2. 주말 체크 (KST 기준)
+  const today = toZonedTime(new Date(), 'Asia/Seoul')
   if (isWeekend(today)) {
     return NextResponse.json({ success: true, message: "Weekend skipped" })
   }

@@ -7,5 +7,6 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Call Sync Calendar API
-        run: curl -X POST https://teamsecuritymanager.vercel.app/api/cron/sync-calendar -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+      - name: Call Sync API
+        run: |
+          curl -X POST https://teamsecuritymanager.vercel.app/api/cron/sync-calendar -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
